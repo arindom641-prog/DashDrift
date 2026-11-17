@@ -14,7 +14,7 @@ canvas{width:min(100%,480px);height:min(67dvh,690px);background:#111e32;border:2
 <header><div class="logo">⚡ DASH DRIFT</div><div class="wallet">🪙 <span id="coins">0</span></div></header>
 <div id="stats"><span>BEST: <b id="best">0</b></span><span>MOVE: TAP LEFT / RIGHT</span></div>
 <canvas id="game" width="420" height="720"></canvas>
-<div id="controls"><button id="shopBtn">🛒 COIN SHOP</button><button id="startBtn" class="primary">▶ PLAY</button></div>
+<div id="controls"><button id="shopBtn">🛒 COIN SHOP</button><button id="packsBtn">💳 BUY COINS</button><button id="startBtn" class="primary">▶ PLAY</button></div>
 </div>
 <div id="panel"><div class="sheet"><h2 id="panelTitle">COIN SHOP</h2><div id="panelBody" class="items"></div><p class="muted" id="panelNote">Collect coins during runs to unlock rides.</p><button id="closeBtn" class="primary">CONTINUE</button></div></div>
 <script>
@@ -38,5 +38,6 @@ function start(){cancelAnimationFrame(raf);lane=1;obs=[];drops=[];score=0;tick=0
 function endRun(){if(!running)return;running=false;over=true;best=Math.max(best,Math.floor(score/10));let reward=Math.floor(score/100);coins+=reward;update();frame()}
 function showShop(){running=false;cancelAnimationFrame(raf);$('panelTitle').textContent='COIN SHOP';$('panelNote').textContent='Use coins collected in the game to unlock new rides.';$('panelBody').innerHTML=rides.map((r,i)=>'<div class="item"><span>'+r.emoji+' '+r.name+'<br><small>'+(unlocked.includes(i)?(selected===i?'SELECTED':'UNLOCKED'):'Cost: '+r.cost+' coins')+'</small></span><button data-ride="'+i+'">'+(unlocked.includes(i)?(selected===i?'✓':'SELECT'):'UNLOCK')+'</button></div>').join('');$('panel').style.display='flex';$('panelBody').querySelectorAll('button').forEach(b=>b.onclick=()=>{let i=Number(b.dataset.ride),r=rides[i];if(!unlocked.includes(i)){if(coins<r.cost){$('panelNote').textContent='Not enough coins yet. Play more to collect coins.';return}coins-=r.cost;unlocked.push(i)}selected=i;update();showShop()})}
 c.addEventListener('pointerdown',e=>{if(!running)return;const r=c.getBoundingClientRect();lane=e.clientX-r.left<r.width/2?Math.max(0,lane-1):Math.min(2,lane+1)});
-$('startBtn').onclick=start;$('shopBtn').onclick=showShop;$('closeBtn').onclick=()=>{$('panel').style.display='none';if(!running)frame()};update();frame();
+function showPacks(){running=false;cancelAnimationFrame(raf);$('panelTitle').textContent='COIN PACKAGES';$('panelNote').textContent='Prices are planned in USD. Real purchases are not active yet; Google Play Billing and secure purchase verification must be connected first.';const prices=['$1.01','$2.01','$3.01','$4.01','$5.01','$5.51'];$('panelBody').innerHTML=prices.map((p,i)=>'<div class="item"><span>🪙 Coin Pack '+(i+1)+'<br><small>'+p+' USD</small></span><button disabled style="opacity:.55">COMING SOON</button></div>').join('');$('panel').style.display='flex'}
+$('startBtn').onclick=start;$('shopBtn').onclick=showShop;$('packsBtn').onclick=showPacks;$('closeBtn').onclick=()=>{$('panel').style.display='none';if(!running)frame()};update();frame();
 </script></body></html>
