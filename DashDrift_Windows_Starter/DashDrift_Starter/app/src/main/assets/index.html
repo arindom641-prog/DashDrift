@@ -1,28 +1,42 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Dash Drift</title><style>
-*{box-sizing:border-box}body{margin:0;background:#101827;color:#fff;font-family:Arial,sans-serif;overflow:hidden}
-#wrap{height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center}
-canvas{width:min(100vw,480px);height:min(82dvh,820px);background:#17243a;border:2px solid #34445f;border-radius:18px;touch-action: manipulation}
-#hint{font-size:14px;color:#b8c6dc;margin:10px}
-</style></head><body><div id="wrap"><canvas id="game" width="420" height="720"></canvas><div id="hint">Tap left or right side to change lane • Tap to restart</div></div>
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 50% 0,#233b61,#080f1d 70%);color:#fff;font-family:Arial,sans-serif;overflow:hidden}
+#app{height:100dvh;display:flex;flex-direction:column;align-items:center;padding:12px;gap:9px}
+header{width:min(100%,480px);display:flex;justify-content:space-between;align-items:center}.logo{font-weight:900;letter-spacing:2px;font-size:20px;color:#62e8c1}.wallet{background:#172a43;border:1px solid #385777;border-radius:20px;padding:8px 13px;font-weight:bold;color:#ffd76a}
+#stats{width:min(100%,480px);display:flex;justify-content:space-between;color:#c5d5ec;font-size:13px}
+canvas{width:min(100%,480px);height:min(67dvh,690px);background:#111e32;border:2px solid #385777;border-radius:18px;touch-action:manipulation;box-shadow:0 12px 35px #0008}
+#controls{width:min(100%,480px);display:flex;gap:9px}button{border:0;border-radius:12px;padding:13px 16px;background:#1b3554;color:#fff;font-weight:bold;font-size:14px}button.primary{background:linear-gradient(100deg,#24cba0,#27a8d9);color:#071827;flex:1}button:active{transform:scale(.98)}
+#panel{position:fixed;inset:0;background:#07101ddd;display:none;align-items:center;justify-content:center;padding:20px}
+.sheet{width:min(100%,390px);background:#172a43;border:1px solid #426182;border-radius:20px;padding:20px;text-align:center;box-shadow:0 18px 60px #000a}
+.sheet h2{margin:4px 0 12px;color:#63e5bd}.items{display:grid;gap:9px}.item{display:flex;justify-content:space-between;align-items:center;background:#203b5b;padding:12px;border-radius:12px}.muted{color:#a9bdd7;font-size:13px;line-height:1.5}
+</style></head><body><div id="app">
+<header><div class="logo">⚡ DASH DRIFT</div><div class="wallet">🪙 <span id="coins">0</span></div></header>
+<div id="stats"><span>BEST: <b id="best">0</b></span><span>MOVE: TAP LEFT / RIGHT</span></div>
+<canvas id="game" width="420" height="720"></canvas>
+<div id="controls"><button id="shopBtn">🛒 COIN SHOP</button><button id="startBtn" class="primary">▶ PLAY</button></div>
+</div>
+<div id="panel"><div class="sheet"><h2 id="panelTitle">COIN SHOP</h2><div id="panelBody" class="items"></div><p class="muted" id="panelNote">Collect coins during runs to unlock rides.</p><button id="closeBtn" class="primary">CONTINUE</button></div></div>
 <script>
-const c=document.getElementById('game'),x=c.getContext('2d');let lane=1,playerY=590,obs=[],score=0,best=0,over=false,tick=0,speed=4;
-function reset(){lane=1;obs=[];score=0;over=false;tick=0;speed=4;loop()}
-function text(t,y,size=26){x.fillStyle='#fff';x.font=`bold ${size}px Arial`;x.textAlign='center';x.fillText(t,210,y)}
-function loop(){
- x.clearRect(0,0,420,720);
- x.fillStyle='#1c2c45';x.fillRect(42,0,336,720);
- x.strokeStyle='#61728d';x.lineWidth=4;x.setLineDash([24,22]);x.beginPath();x.moveTo(154,0);x.lineTo(154,720);x.moveTo(266,0);x.lineTo(266,720);x.stroke();x.setLineDash([]);
- if(!over){tick++;score++;if(tick%48===0)obs.push({lane:Math.floor(Math.random()*3),y:-70});speed=4+Math.min(score/900,4)}
- obs.forEach(o=>{if(!over)o.y+=speed;x.fillStyle='#ff765e';x.fillRect(65+o.lane*112,o.y,78,58)});
- let px=65+lane*112;x.fillStyle='#42d6a4';x.fillRect(px,playerY,78,82);
- if(!over){for(const o of obs){if(o.lane===lane&&o.y+58>playerY+8&&o.y<playerY+75)over=true}}
- obs=obs.filter(o=>o.y<780);
- text('DASH DRIFT',52,22);x.fillStyle='#fff';x.font='bold 20px Arial';x.textAlign='left';x.fillText('SCORE '+Math.floor(score/10),22,92);
- if(over){best=Math.max(best,Math.floor(score/10));x.fillStyle='rgba(0,0,0,.68)';x.fillRect(0,0,420,720);text('CRASH!',310,42);text('Score: '+Math.floor(score/10),355,25);text('Tap to play again',410,20)}
- else requestAnimationFrame(loop);
-}
-c.addEventListener('pointerdown',e=>{if(over){reset();return}const r=c.getBoundingClientRect(),px=e.clientX-r.left;lane=px<r.width/2?Math.max(0,lane-1):Math.min(2,lane+1)});
-loop();
+const c=document.getElementById('game'),x=c.getContext('2d'),$=id=>document.getElementById(id);
+let lane=1,playerY=590,obs=[],drops=[],score=0,over=true,running=false,tick=0,speed=4,coins=Number(localStorage.ddCoins||0),best=Number(localStorage.ddBest||0),raf=0;
+const rides=[{name:'Mint Runner',cost:0,emoji:'🟢'},{name:'Sunset Racer',cost:100,emoji:'🟠'},{name:'Neon Bolt',cost:250,emoji:'⚡'},{name:'Shadow GT',cost:500,emoji:'🏎️'}];
+let selected=Number(localStorage.ddRide||0),unlocked=JSON.parse(localStorage.ddUnlocked||'[0]');
+function update(){ $('coins').textContent=coins;$('best').textContent=best;localStorage.ddCoins=coins;localStorage.ddBest=best;localStorage.ddRide=selected;localStorage.ddUnlocked=JSON.stringify(unlocked)}
+function drawRoad(){x.fillStyle='#1b2e49';x.fillRect(42,0,336,720);x.strokeStyle='#627a99';x.lineWidth=4;x.setLineDash([24,22]);x.beginPath();x.moveTo(154,0);x.lineTo(154,720);x.moveTo(266,0);x.lineTo(266,720);x.stroke();x.setLineDash([])}
+function label(t,y,size=25,color='#fff'){x.fillStyle=color;x.font='bold '+size+'px Arial';x.textAlign='center';x.fillText(t,210,y)}
+function frame(){x.clearRect(0,0,420,720);let g=x.createLinearGradient(0,0,0,720);g.addColorStop(0,'#152944');g.addColorStop(1,'#091321');x.fillStyle=g;x.fillRect(0,0,420,720);drawRoad();
+if(running){tick++;score++;if(tick%48===0)obs.push({lane:Math.floor(Math.random()*3),y:-70});if(tick%70===0)drops.push({lane:Math.floor(Math.random()*3),y:-30});speed=4+Math.min(score/900,4)}
+obs.forEach(o=>{if(running)o.y+=speed;x.fillStyle='#ff765e';x.beginPath();x.roundRect(65+o.lane*112,o.y,78,58,10);x.fill()});
+drops.forEach(o=>{if(running)o.y+=speed;x.fillStyle='#ffd45e';x.beginPath();x.arc(104+o.lane*112,o.y,13,0,Math.PI*2);x.fill();x.fillStyle='#805313';x.font='bold 14px Arial';x.textAlign='center';x.fillText('$',104+o.lane*112,o.y+5)});
+const px=65+lane*112;x.fillStyle=['#42d6a4','#ffb15e','#69c9ff','#b89cff'][selected];x.beginPath();x.roundRect(px,playerY,78,82,13);x.fill();x.fillStyle='#10243a';x.fillRect(px+13,playerY+13,52,18);
+if(running){for(const o of obs){if(o.lane===lane&&o.y+58>playerY+8&&o.y<playerY+75)endRun()}for(const o of drops){if(o.lane===lane&&Math.abs(o.y-(playerY+40))<35){coins+=5;o.y=900;update()}}}
+obs=obs.filter(o=>o.y<780);drops=drops.filter(o=>o.y<780);label('SCORE '+Math.floor(score/10),54,22);label('+'+coins+' COINS',88,15,'#ffd45e');
+if(!running){x.fillStyle='#0009';x.fillRect(0,0,420,720);label(over&&score>0?'CRASH!':'READY TO RACE',315,36);label(over&&score>0?'SCORE '+Math.floor(score/10):'Tap PLAY to start',360,21,'#c8dbf1');label('DODGE • COLLECT • UNLOCK',410,15,'#ffd45e')}
+if(running)raf=requestAnimationFrame(frame)}
+function start(){cancelAnimationFrame(raf);lane=1;obs=[];drops=[];score=0;tick=0;speed=4;over=false;running=true;frame()}
+function endRun(){if(!running)return;running=false;over=true;best=Math.max(best,Math.floor(score/10));let reward=Math.floor(score/100);coins+=reward;update();frame()}
+function showShop(){running=false;cancelAnimationFrame(raf);$('panelTitle').textContent='COIN SHOP';$('panelNote').textContent='Use coins collected in the game to unlock new rides.';$('panelBody').innerHTML=rides.map((r,i)=>'<div class="item"><span>'+r.emoji+' '+r.name+'<br><small>'+(unlocked.includes(i)?(selected===i?'SELECTED':'UNLOCKED'):'Cost: '+r.cost+' coins')+'</small></span><button data-ride="'+i+'">'+(unlocked.includes(i)?(selected===i?'✓':'SELECT'):'UNLOCK')+'</button></div>').join('');$('panel').style.display='flex';$('panelBody').querySelectorAll('button').forEach(b=>b.onclick=()=>{let i=Number(b.dataset.ride),r=rides[i];if(!unlocked.includes(i)){if(coins<r.cost){$('panelNote').textContent='Not enough coins yet. Play more to collect coins.';return}coins-=r.cost;unlocked.push(i)}selected=i;update();showShop()})}
+c.addEventListener('pointerdown',e=>{if(!running)return;const r=c.getBoundingClientRect();lane=e.clientX-r.left<r.width/2?Math.max(0,lane-1):Math.min(2,lane+1)});
+$('startBtn').onclick=start;$('shopBtn').onclick=showShop;$('closeBtn').onclick=()=>{$('panel').style.display='none';if(!running)frame()};update();frame();
 </script></body></html>
