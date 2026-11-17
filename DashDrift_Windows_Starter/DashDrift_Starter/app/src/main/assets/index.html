@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Dash Drift</title><style>
+*{box-sizing:border-box}body{margin:0;background:#101827;color:#fff;font-family:Arial,sans-serif;overflow:hidden}
+#wrap{height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center}
+canvas{width:min(100vw,480px);height:min(82dvh,820px);background:#17243a;border:2px solid #34445f;border-radius:18px;touch-action: manipulation}
+#hint{font-size:14px;color:#b8c6dc;margin:10px}
+</style></head><body><div id="wrap"><canvas id="game" width="420" height="720"></canvas><div id="hint">Tap left or right side to change lane • Tap to restart</div></div>
+<script>
+const c=document.getElementById('game'),x=c.getContext('2d');let lane=1,playerY=590,obs=[],score=0,best=0,over=false,tick=0,speed=4;
+function reset(){lane=1;obs=[];score=0;over=false;tick=0;speed=4;loop()}
+function text(t,y,size=26){x.fillStyle='#fff';x.font=`bold ${size}px Arial`;x.textAlign='center';x.fillText(t,210,y)}
+function loop(){
+ x.clearRect(0,0,420,720);
+ x.fillStyle='#1c2c45';x.fillRect(42,0,336,720);
+ x.strokeStyle='#61728d';x.lineWidth=4;x.setLineDash([24,22]);x.beginPath();x.moveTo(154,0);x.lineTo(154,720);x.moveTo(266,0);x.lineTo(266,720);x.stroke();x.setLineDash([]);
+ if(!over){tick++;score++;if(tick%48===0)obs.push({lane:Math.floor(Math.random()*3),y:-70});speed=4+Math.min(score/900,4)}
+ obs.forEach(o=>{if(!over)o.y+=speed;x.fillStyle='#ff765e';x.fillRect(65+o.lane*112,o.y,78,58)});
+ let px=65+lane*112;x.fillStyle='#42d6a4';x.fillRect(px,playerY,78,82);
+ if(!over){for(const o of obs){if(o.lane===lane&&o.y+58>playerY+8&&o.y<playerY+75)over=true}}
+ obs=obs.filter(o=>o.y<780);
+ text('DASH DRIFT',52,22);x.fillStyle='#fff';x.font='bold 20px Arial';x.textAlign='left';x.fillText('SCORE '+Math.floor(score/10),22,92);
+ if(over){best=Math.max(best,Math.floor(score/10));x.fillStyle='rgba(0,0,0,.68)';x.fillRect(0,0,420,720);text('CRASH!',310,42);text('Score: '+Math.floor(score/10),355,25);text('Tap to play again',410,20)}
+ else requestAnimationFrame(loop);
+}
+c.addEventListener('pointerdown',e=>{if(over){reset();return}const r=c.getBoundingClientRect(),px=e.clientX-r.left;lane=px<r.width/2?Math.max(0,lane-1):Math.min(2,lane+1)});
+loop();
+</script></body></html>
